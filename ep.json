@@ -1,0 +1,12 @@
+{
+  "parts": [
+    {
+      "name": "ep_ldapauth",
+      "hooks": {
+        "authenticate": "ep_ldapauth/ep_ldapauth",
+        "authorize": "ep_ldapauth/ep_ldapauth",
+        "handleMessage": "ep_ldapauth/ep_ldapauth"
+      }
+    }
+  ]
+}
