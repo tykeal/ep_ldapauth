@@ -52,7 +52,8 @@ exports.authenticate = function(hook_name, context, cb) {
       }
 
       // User authenticated, save off some information needed for authorization
-      context.req.session.user = username;
+      var user = { username: username };
+      context.req.session.user = user;
       settings.globalUserName = username;
       console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
       ldapauthUsername[express_sid] = username;
@@ -80,7 +81,7 @@ exports.authorize = function(hook_name, context, cb) {
     cache: true
   });
 
-  username = context.req.session.user;
+  username = context.req.session.user.username;
 
   if (context.resource.match(/^\/(static|javascripts|pluginfw|favicon.ico|api)/)) {
     console.debug('ep_ldapauth.authorize: authorizing static path %s', context.resource);
@@ -95,10 +96,13 @@ exports.authorize = function(hook_name, context, cb) {
 
       // We've recieved back group(s) that the user matches
       // Given our current auth scheme (only checking on admin) we'll auth
-      if (groups)
+      if (groups) {
+        context.req.session.user.is_admin = true;
         return cb([true]);
-      else
+      } else {
+        context.req.session.user.is_admin = false;
         return cb([false]);
+      }
     });
   } else {
     console.debug('ep_ldapauth.authorize: passing authorize along for path %s', context.resource);
