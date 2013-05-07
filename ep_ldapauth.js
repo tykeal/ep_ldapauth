@@ -81,7 +81,13 @@ exports.authorize = function(hook_name, context, cb) {
     cache: true
   });
 
-  username = context.req.session.user.username;
+  if (typeof(context.req.session.user) != 'undefined' &&
+    typeof(context.req.session.user.username) != 'undefined') {
+    username = context.req.session.user.username;
+  } else {
+    console.debug('ep_ldapauth.authorize: no username in user object');
+    return cb([false]);
+  }
 
   if (context.resource.match(/^\/(static|javascripts|pluginfw|favicon.ico|api)/)) {
     console.debug('ep_ldapauth.authorize: authorizing static path %s', context.resource);
