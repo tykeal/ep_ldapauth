@@ -17,10 +17,10 @@ function ldapauthSetUsername(token, username) {
   console.debug('ep_ldapauth.ldapauthSetUsername: getting authorid for token %s', token);
   authorManager.getAuthor4Token(token, function(err, author) {
     if (ERR(err)) {
-      console.debug('ep_ldapauth.ldapauthSetUsername: have authorid %s, setting username to %s', author, username);
-      authorManager.SetAuthorName(author, username);
-    } else {
       console.debug('ep_ldapauth.ldapauthSetUsername: could not get authorid for token %s', token);
+    } else {
+      console.debug('ep_ldapauth.ldapauthSetUsername: have authorid %s, setting username to "%s"', author, username);
+      authorManager.setAuthorName(author, username);
     }
   });
   return;
@@ -52,11 +52,11 @@ exports.authenticate = function(hook_name, context, cb) {
       }
 
       // User authenticated, save off some information needed for authorization
-      var user = { username: username };
-      context.req.session.user = user;
+      context.req.session.user = { username: username };
       settings.globalUserName = username;
       console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
-      ldapauthUsername[express_sid] = username;
+      // We use the CN / display name for our global username
+      ldapauthUsername[express_sid] = user.cn;
       return cb([true]);
     });
   } else {
@@ -124,7 +124,7 @@ exports.handleMessage = function(hook_name, context, cb) {
     } else {
       var client_id = context.client.id;
       var express_sid = context.client.manager.handshaken[client_id].sessionID;
-      console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s express_sid = %s, setting username for token %s to %s', client_id, express_sid, context.message.token, ldapauthUsername);
+      console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s express_sid = %s, setting username for token %s to %s', client_id, express_sid, context.message.token, ldapauthUsername[express_sid]);
       ldapauthSetUsername(context.message.token, ldapauthUsername[express_sid]);
     }
   } else if ( context.message.type == "COLLABROOM" && context.message.data.type == "USERINFO_UPDATE" ) {
