@@ -10,9 +10,6 @@ var ERR = require('async-stacktrace');
 var settings = require('ep_etherpad-lite/node/utils/Settings');
 var authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
-// ldapauthUsername is set by authenticate and used in messageHandler, keyed on express_sid
-var ldapauthUsername = {};
-
 function ldapauthSetUsername(token, username) {
   console.debug('ep_ldapauth.ldapauthSetUsername: getting authorid for token %s', token);
   authorManager.getAuthor4Token(token, function(err, author) {
@@ -52,11 +49,9 @@ exports.authenticate = function(hook_name, context, cb) {
       }
 
       // User authenticated, save off some information needed for authorization
-      context.req.session.user = { username: username };
+      context.req.session.user = { username: username, displayName: user.cn };
       settings.globalUserName = username;
       console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
-      // We use the CN / display name for our global username
-      ldapauthUsername[express_sid] = user.cn;
       return cb([true]);
     });
   } else {
@@ -123,9 +118,9 @@ exports.handleMessage = function(hook_name, context, cb) {
       console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message has no token!');
     } else {
       var client_id = context.client.id;
-      var express_sid = context.client.manager.handshaken[client_id].sessionID;
-      console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s express_sid = %s, setting username for token %s to %s', client_id, express_sid, context.message.token, ldapauthUsername[express_sid]);
-      ldapauthSetUsername(context.message.token, ldapauthUsername[express_sid]);
+      var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
+      console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
+      ldapauthSetUsername(context.message.token, displayName);
     }
   } else if ( context.message.type == "COLLABROOM" && context.message.data.type == "USERINFO_UPDATE" ) {
     console.debug('ep_ldapauth.handleMessage: intercepted USERINFO_UPDATE and dropping it!');
