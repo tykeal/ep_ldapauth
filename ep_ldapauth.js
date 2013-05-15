@@ -32,7 +32,7 @@ exports.authenticate = function(hook_name, context, cb) {
     var password = userpass[1];
     var express_sid = context.req.sessionID;
 
-    var ldap = new MyLdapAuth({
+    var authenticateLDAP = new MyLdapAuth({
       url: settings.users.ldapauth.url,
       adminDn: settings.users.ldapauth.searchDN,
       adminPassword: settings.users.ldapauth.searchPWD,
@@ -42,19 +42,36 @@ exports.authenticate = function(hook_name, context, cb) {
     });
 
     // Attempt to authenticate the user
-    ldap.authenticate(username, password, function(err, user) {
+    authenticateLDAP.authenticate(username, password, function(err, user) {
       if (err) {
         console.error('ep_ldapauth.authenticate: LDAP auth error: %s', err);
+        authenticateLDAP.close(function (err) {
+          if (err) {
+            console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
+          }
+        });
+        authenticateLDAP = null;
         return cb([false]);
       }
 
       // User authenticated, save off some information needed for authorization
       context.req.session.user = { username: username, displayName: user.cn };
+      if (settings.users.ldapauth.groupAttributeIsDN) {
+        context.req.session.user.userDN = user.dn;
+      }
       settings.globalUserName = username;
       console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
+      authenticateLDAP.close(function (err) {
+        if (err) {
+          console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
+        }
+      });
+      authenticateLDAP = null;
+      console.debug('ep_ldapauth.authenticate: successful authentication');
       return cb([true]);
     });
   } else {
+    console.debug('ep_ldapauth.authenticate: failed authentication no auth headers');
     return cb([false]);
   }
 }
@@ -62,23 +79,14 @@ exports.authenticate = function(hook_name, context, cb) {
 exports.authorize = function(hook_name, context, cb) {
   console.debug('ep_ldapauth.authorize');
 
-  var ldap = new MyLdapAuth({
-    url: settings.users.ldapauth.url,
-    adminDn: settings.users.ldapauth.searchDN,
-    adminPassword: settings.users.ldapauth.searchPWD,
-    searchBase: settings.users.ldapauth.accountBase,
-    searchFilter: settings.users.ldapauth.accountPattern,
-    groupSearchBase: settings.users.ldapauth.groupSearchBase,
-    groupAttribute: settings.users.ldapauth.groupAttribute,
-    groupAttributeIsDN: settings.users.ldapauth.groupAttributeIsDN,
-    searchScope: settings.users.ldapauth.searchScope,
-    groupSearch: settings.users.ldapauth.groupSearch,
-    cache: true
-  });
+  userDN = null;
 
-  if (typeof(context.req.session.user) != 'undefined' &&
-    typeof(context.req.session.user.username) != 'undefined') {
+  if (typeof(context.req.session.user) !== 'undefined' &&
+    typeof(context.req.session.user.username) !== 'undefined') {
     username = context.req.session.user.username;
+    if (typeof(context.req.session.user.userDN !== 'undefined')) {
+      userDN = context.req.session.user.userDN;
+    }
   } else {
     console.debug('ep_ldapauth.authorize: no username in user object');
     return cb([false]);
@@ -88,10 +96,31 @@ exports.authorize = function(hook_name, context, cb) {
     console.debug('ep_ldapauth.authorize: authorizing static path %s', context.resource);
     return cb([true]);
   } else if (context.resource.match(/^\/admin/)) {
-    console.debug('ep_ldapauth.authorize: authorizing along administrative path %s', context.resource);
-    ldap.groupsearch(username, function(err, groups) {
+    console.debug('ep_ldapauth.authorize: attempting to authorize along administrative path %s', context.resource);
+
+    var authorizeLDAP = new MyLdapAuth({
+      url: settings.users.ldapauth.url,
+      adminDn: settings.users.ldapauth.searchDN,
+      adminPassword: settings.users.ldapauth.searchPWD,
+      searchBase: settings.users.ldapauth.accountBase,
+      searchFilter: settings.users.ldapauth.accountPattern,
+      groupSearchBase: settings.users.ldapauth.groupSearchBase,
+      groupAttribute: settings.users.ldapauth.groupAttribute,
+      groupAttributeIsDN: settings.users.ldapauth.groupAttributeIsDN,
+      searchScope: settings.users.ldapauth.searchScope,
+      groupSearch: settings.users.ldapauth.groupSearch,
+      cache: true
+    });
+
+    authorizeLDAP.groupsearch(username, userDN, function(err, groups) {
       if (err) {
         console.error('ep_ldapauth.authorize: LDAP groupsearch error: %s', err);
+        authorizeLDAP.close(function (err) {
+          if (err) {
+            console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+          }
+        });
+        authorizeLDAP = null;
         return cb([false]);
       }
 
@@ -99,9 +128,23 @@ exports.authorize = function(hook_name, context, cb) {
       // Given our current auth scheme (only checking on admin) we'll auth
       if (groups) {
         context.req.session.user.is_admin = true;
+        authorizeLDAP.close(function (err) {
+          if (err) {
+            console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+          }
+        });
+        authorizeLDAP = null;
+        console.debug('ep_ldapauth.authorize: successful authorization');
         return cb([true]);
       } else {
         context.req.session.user.is_admin = false;
+        authorizeLDAP.close(function (err) {
+          if (err) {
+            console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+          }
+        });
+        authorizeLDAP = null;
+        console.debug('ep_ldapauth.authorize: failed authorization');
         return cb([false]);
       }
     });
