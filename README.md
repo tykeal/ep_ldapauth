@@ -19,7 +19,7 @@ Add to settings.json:
             "groupAttribute": "member",
             "groupAttributeIsDN": true,
             "searchScope": "sub",
-            "groupSerach": "(&(cn=admin)(objectClass=groupOfNames))"
+            "groupSearch": "(&(cn=admin)(objectClass=groupOfNames))"
         }
     },
 
