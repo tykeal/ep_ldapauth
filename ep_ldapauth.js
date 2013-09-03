@@ -55,7 +55,13 @@ exports.authenticate = function(hook_name, context, cb) {
       }
 
       // User authenticated, save off some information needed for authorization
-      context.req.session.user = { username: username, displayName: user.cn };
+      context.req.session.user = { username: username };
+      if ('displayNameAttribute' in settings.users.ldapauth && settings.users.ldapauth.displayNameAttribute in user) {
+        context.req.session.user['displayName']=user[settings.users.ldapauth.displayNameAttribute];
+      }
+      else if ('cn' in user) {
+        context.req.session.user['displayName']=user.cn;
+      }
       if (settings.users.ldapauth.groupAttributeIsDN) {
         context.req.session.user.userDN = user.dn;
       }
