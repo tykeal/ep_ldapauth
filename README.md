@@ -13,6 +13,7 @@ Add to settings.json:
             "url": "ldaps://ldap.example.com",
             "accountBase": "ou=Users,dc=example,dc=com",
             "accountPattern": "(&(objectClass=*)(uid={{username}}))",
+            "displayNameAttribute": "cn",
             "searchDN": "uid=searchuser,dc=example,dc=com",
             "searchPWD": "supersecretpassword",
             "groupSearchBase": "ou=Groups,dc=example,dc=com",
