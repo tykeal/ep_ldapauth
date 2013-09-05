@@ -55,7 +55,13 @@ exports.authenticate = function(hook_name, context, cb) {
       }
 
       // User authenticated, save off some information needed for authorization
-      context.req.session.user = { username: username, displayName: user.cn };
+      context.req.session.user = { username: username };
+      if ('displayNameAttribute' in settings.users.ldapauth && settings.users.ldapauth.displayNameAttribute in user) {
+        context.req.session.user['displayName']=user[settings.users.ldapauth.displayNameAttribute];
+      }
+      else if ('cn' in user) {
+        context.req.session.user['displayName']=user.cn;
+      }
       if (settings.users.ldapauth.groupAttributeIsDN) {
         context.req.session.user.userDN = user.dn;
       }
@@ -161,9 +167,14 @@ exports.handleMessage = function(hook_name, context, cb) {
       console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message has no token!');
     } else {
       var client_id = context.client.id;
-      var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
-      console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
-      ldapauthSetUsername(context.message.token, displayName);
+      if ('user' in context.client.manager.handshaken[client_id].session) {
+        var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
+        console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
+        ldapauthSetUsername(context.message.token, displayName);
+      }
+      else {
+        console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY but user does have displayName !');
+      }
     }
   } else if ( context.message.type == "COLLABROOM" && context.message.data.type == "USERINFO_UPDATE" ) {
     console.debug('ep_ldapauth.handleMessage: intercepted USERINFO_UPDATE and dropping it!');
