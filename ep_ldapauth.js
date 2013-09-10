@@ -28,8 +28,8 @@ exports.authenticate = function(hook_name, context, cb) {
   // If auth headers are present use them to authenticate
   if (context.req.headers.authorization && context.req.headers.authorization.search('Basic ') === 0) {
     var userpass = new Buffer(context.req.headers.authorization.split(' ')[1], 'base64').toString().split(":");
-    var username = userpass[0];
-    var password = userpass[1];
+    var username = userpass.shift();
+    var password = userpass.join(':');
     var express_sid = context.req.sessionID;
 
     var authenticateLDAP = new MyLdapAuth({
