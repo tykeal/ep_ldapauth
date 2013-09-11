@@ -21,6 +21,7 @@ Add to settings.json:
             "groupAttributeIsDN": true,
             "searchScope": "sub",
             "groupSearch": "(&(cn=admin)(objectClass=groupOfNames))"
+            "anonymousReadonly": false
         }
     },
 

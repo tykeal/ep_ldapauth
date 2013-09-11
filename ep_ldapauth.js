@@ -80,10 +80,16 @@ exports.authenticate = function(hook_name, context, cb) {
     console.debug('ep_ldapauth.authenticate: failed authentication no auth headers');
     return cb([false]);
   }
-}
+};
 
 exports.authorize = function(hook_name, context, cb) {
   console.debug('ep_ldapauth.authorize');
+
+  if(settings.users.ldapauth.anonymousReadonly &&
+      /^\/(p\/r\..{16}|locales.json|static|javascripts|pluginfw|favicon.ico)/.test(context.resource)) {
+    console.debug('ep_ldapauth.authorize.anonymous: authorizing static path %s', context.resource);
+    return cb([true]);
+  }
 
   userDN = null;
 
@@ -98,7 +104,7 @@ exports.authorize = function(hook_name, context, cb) {
     return cb([false]);
   }
 
-  if (context.resource.match(/^\/(static|javascripts|pluginfw|favicon.ico|api)/)) {
+  if (/^\/(static|javascripts|pluginfw|favicon.ico|api)/.test(context.resource)) {
     console.debug('ep_ldapauth.authorize: authorizing static path %s', context.resource);
     return cb([true]);
   } else if (context.resource.match(/^\/admin/)) {
@@ -158,7 +164,7 @@ exports.authorize = function(hook_name, context, cb) {
     console.debug('ep_ldapauth.authorize: passing authorize along for path %s', context.resource);
     return cb([false]);
   }
-}
+};
 
 exports.handleMessage = function(hook_name, context, cb) {
   console.debug("ep_ldapauth.handleMessage");
@@ -169,6 +175,7 @@ exports.handleMessage = function(hook_name, context, cb) {
       var client_id = context.client.id;
       if ('user' in context.client.manager.handshaken[client_id].session) {
         var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
+        if(settings.users.ldapauth.anonymousReadonly && !displayName) displayName = 'guest';
         console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
         ldapauthSetUsername(context.message.token, displayName);
       }
@@ -181,6 +188,6 @@ exports.handleMessage = function(hook_name, context, cb) {
     return cb([null]);
   }
   return cb([context.message]);
-}
+};
 
 // vim: sw=2 ts=2 sts=2 et ai
