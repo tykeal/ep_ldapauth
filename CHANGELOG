@@ -1,0 +1,8 @@
+Changes from 0.1.0 to 0.2.0
+- logger fix -- vileda
+- documentation updates and fixes
+- groupAttribute fixes -- Benjamin Renard
+- displayName & displayNameAttribute fixes & additions -- Benjamin Renard
+- array fixes -- Benjamin Rendard
+- Users are now allowed to have colons in their passwords -- vileda
+- anonymous read-only pads are now an option (default to off) -- vileda
