@@ -172,9 +172,8 @@ exports.handleMessage = function(hook_name, context, cb) {
     if (!context.message.token) {
       console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message has no token!');
     } else {
-      var client_id = context.client.id;
-      if ('user' in context.client.manager.handshaken[client_id].session) {
-        var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
+      if ('user' in context.client.client.request.session) {
+        var displayName = context.client.client.request.session.user.displayName;
         if(settings.users.ldapauth.anonymousReadonly && !displayName) displayName = 'guest';
         console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
         ldapauthSetUsername(context.message.token, displayName);
