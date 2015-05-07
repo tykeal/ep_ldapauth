@@ -5,6 +5,7 @@
 //var LdapAuth = require('ldapauth');
 var MyLdapAuth = require('./lib/MyLdapAuth.js');
 var util = require('util');
+var fs = require('fs');
 
 var ERR = require('async-stacktrace');
 var settings = require('ep_etherpad-lite/node/utils/Settings');
@@ -31,15 +32,20 @@ exports.authenticate = function(hook_name, context, cb) {
     var username = userpass.shift();
     var password = userpass.join(':');
     var express_sid = context.req.sessionID;
-
-    var authenticateLDAP = new MyLdapAuth({
+    var myLdapAuthOpts = {
       url: settings.users.ldapauth.url,
       adminDn: settings.users.ldapauth.searchDN,
       adminPassword: settings.users.ldapauth.searchPWD,
       searchBase: settings.users.ldapauth.accountBase,
       searchFilter: settings.users.ldapauth.accountPattern,
       cache: true
-    });
+    };
+
+    if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
+      myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
+    }
+
+    var authenticateLDAP = new MyLdapAuth(myLdapAuthOpts);
 
     // Attempt to authenticate the user
     authenticateLDAP.authenticate(username, password, function(err, user) {
@@ -109,8 +115,7 @@ exports.authorize = function(hook_name, context, cb) {
     return cb([true]);
   } else if (context.resource.match(/^\/admin/)) {
     console.debug('ep_ldapauth.authorize: attempting to authorize along administrative path %s', context.resource);
-
-    var authorizeLDAP = new MyLdapAuth({
+    var myLdapAuthOpts = {
       url: settings.users.ldapauth.url,
       adminDn: settings.users.ldapauth.searchDN,
       adminPassword: settings.users.ldapauth.searchPWD,
@@ -122,7 +127,13 @@ exports.authorize = function(hook_name, context, cb) {
       searchScope: settings.users.ldapauth.searchScope,
       groupSearch: settings.users.ldapauth.groupSearch,
       cache: true
-    });
+    };
+
+    if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
+      myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
+    }
+
+    var authorizeLDAP = new MyLdapAuth(myLdapAuthOpts);
 
     authorizeLDAP.groupsearch(username, userDN, function(err, groups) {
       if (err) {
