@@ -89,17 +89,17 @@ exports.authenticate = function(hook_name, context, cb) {
           userDN = context.req.session.user.userDN;
         }
       } else {
-        console.debug('ep_ldapauth.authorize: no username in user object');
+        console.debug('ep_ldapauth.authenticate: no username in user object');
         return cb([false]);
       }
 
       // Search if our user is in the groupSearchUser
       authenticateLDAP.groupsearch(username, userDN, function(err, groups) {
         if (err) {
-          console.error('ep_ldapauth.authorize: LDAP groupsearch error: %s', err);
+          console.error('ep_ldapauth.authenticate: LDAP groupsearch error: %s', err);
           authenticateLDAP.close(function (err) {
             if (err) {
-              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+              console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
             }
           });
           authenticateLDAP = null;
@@ -112,21 +112,21 @@ exports.authenticate = function(hook_name, context, cb) {
           context.req.session.user.is_admin = true;
           authenticateLDAP.close(function (err) {
             if (err) {
-              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+              console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
             }
           });
           authenticateLDAP = null;
-          console.debug('ep_ldapauth.authorize: successful authorization');
+          console.debug('ep_ldapauth.authenticate: successful authorization');
           return cb([true]);
         } else {
           context.req.session.user.is_admin = false;
           authenticateLDAP.close(function (err) {
             if (err) {
-              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+              console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
             }
           });
           authenticateLDAP = null;
-          console.debug('ep_ldapauth.authorize: failed authorization');
+          console.debug('ep_ldapauth.authenticate: failed authorization');
           return cb([false]);
         }
       });
