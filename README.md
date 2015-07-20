@@ -21,6 +21,7 @@ Add to settings.json:
             "groupAttributeIsDN": true,
             "searchScope": "sub",
             "groupSearch": "(&(cn=admin)(objectClass=groupOfNames))",
+            "groupSearchUser": "(cn=user-roles,dc=example,dc=com)",
             "anonymousReadonly": false
         }
     },

@@ -38,6 +38,11 @@ exports.authenticate = function(hook_name, context, cb) {
       adminPassword: settings.users.ldapauth.searchPWD,
       searchBase: settings.users.ldapauth.accountBase,
       searchFilter: settings.users.ldapauth.accountPattern,
+      groupSearchBase: settings.users.ldapauth.groupSearchBase,
+      groupAttribute: settings.users.ldapauth.groupAttribute,
+      groupAttributeIsDN: settings.users.ldapauth.groupAttributeIsDN,
+      searchScope: settings.users.ldapauth.searchScope,
+      groupSearch: settings.users.ldapauth.groupSearchUser,
       cache: true
     };
 
@@ -73,14 +78,59 @@ exports.authenticate = function(hook_name, context, cb) {
       }
       settings.globalUserName = username;
       console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
-      authenticateLDAP.close(function (err) {
+
+      // Define userDN to search in groupSearchUser
+      userDN = null;
+
+      if (typeof(context.req.session.user) !== 'undefined' &&
+        typeof(context.req.session.user.username) !== 'undefined') {
+        username = context.req.session.user.username;
+        if (typeof(context.req.session.user.userDN !== 'undefined')) {
+          userDN = context.req.session.user.userDN;
+        }
+      } else {
+        console.debug('ep_ldapauth.authorize: no username in user object');
+        return cb([false]);
+      }
+
+      // Search if our user is in the groupSearchUser
+      authenticateLDAP.groupsearch(username, userDN, function(err, groups) {
         if (err) {
-          console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
+          console.error('ep_ldapauth.authorize: LDAP groupsearch error: %s', err);
+          authenticateLDAP.close(function (err) {
+            if (err) {
+              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+            }
+          });
+          authenticateLDAP = null;
+          return cb([false]);
+        }
+
+        // We've recieved back group(s) that the user matches
+        // Given our current auth scheme (only checking on admin) we'll auth
+        if (groups) {
+          context.req.session.user.is_admin = true;
+          authenticateLDAP.close(function (err) {
+            if (err) {
+              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+            }
+          });
+          authenticateLDAP = null;
+          console.debug('ep_ldapauth.authorize: successful authorization');
+          return cb([true]);
+        } else {
+          context.req.session.user.is_admin = false;
+          authenticateLDAP.close(function (err) {
+            if (err) {
+              console.error('ep_ldapauth.authorize: LDAP close error: %s', err);
+            }
+          });
+          authenticateLDAP = null;
+          console.debug('ep_ldapauth.authorize: failed authorization');
+          return cb([false]);
         }
       });
-      authenticateLDAP = null;
-      console.debug('ep_ldapauth.authenticate: successful authentication');
-      return cb([true]);
+      
     });
   } else {
     console.debug('ep_ldapauth.authenticate: failed authentication no auth headers');
