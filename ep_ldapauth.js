@@ -5,6 +5,7 @@
 //var LdapAuth = require('ldapauth');
 var MyLdapAuth = require('./lib/MyLdapAuth.js');
 var util = require('util');
+var fs = require('fs');
 
 var ERR = require('async-stacktrace');
 var settings = require('ep_etherpad-lite/node/utils/Settings');
@@ -41,14 +42,20 @@ exports.authenticate = function(hook_name, context, cb) {
     return cb([false]);
   }
 
-  var authenticateLDAP = new MyLdapAuth({
+  var myLdapAuthOpts = {
     url: settings.users.ldapauth.url,
     adminDn: settings.users.ldapauth.searchDN,
     adminPassword: settings.users.ldapauth.searchPWD,
     searchBase: settings.users.ldapauth.accountBase,
     searchFilter: settings.users.ldapauth.accountPattern,
     cache: true
-  });
+  };
+
+  if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
+    myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
+  }
+
+  var authenticateLDAP = new MyLdapAuth(myLdapAuthOpts);
 
   // Attempt to authenticate the user
   authenticateLDAP.authenticate(username, password, function(err, user) {
@@ -115,7 +122,7 @@ exports.authorize = function(hook_name, context, cb) {
   } else if (context.resource.match(/^\/admin/)) {
     console.debug('ep_ldapauth.authorize: attempting to authorize along administrative path %s', context.resource);
 
-    var authorizeLDAP = new MyLdapAuth({
+    var myLdapAuthOpts = {
       url: settings.users.ldapauth.url,
       adminDn: settings.users.ldapauth.searchDN,
       adminPassword: settings.users.ldapauth.searchPWD,
@@ -127,7 +134,13 @@ exports.authorize = function(hook_name, context, cb) {
       searchScope: settings.users.ldapauth.searchScope,
       groupSearch: settings.users.ldapauth.groupSearch,
       cache: true
-    });
+    };
+
+    if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
+      myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
+    }
+
+    var authorizeLDAP = new MyLdapAuth(myLdapAuthOpts);
 
     authorizeLDAP.groupsearch(username, userDN, function(err, groups) {
       if (err) {
@@ -178,8 +191,8 @@ exports.handleMessage = function(hook_name, context, cb) {
       console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message has no token!');
     } else {
       var client_id = context.client.id;
-      if ('user' in context.client.manager.handshaken[client_id].session) {
-        var displayName = context.client.manager.handshaken[client_id].session.user.displayName;
+      if ('user' in context.client.client.request.session) {
+        var displayName = context.client.client.request.session.user.displayName;
         if(settings.users.ldapauth.anonymousReadonly && !displayName) displayName = 'guest';
         console.debug('ep_ldapauth.handleMessage: intercepted CLIENT_READY message for client_id = %s, setting username for token %s to %s', client_id, context.message.token, displayName);
         ldapauthSetUsername(context.message.token, displayName);
