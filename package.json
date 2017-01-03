@@ -3,13 +3,13 @@
   "description": "Hooks into etherpad lite auth to provide LDAP authentication.",
   "author": "Andrew Grimberg <agrimberg@linuxfoundation.org>",
   "version": "0.2.0",
-  "license": "GPLv2",
+  "license": "GPL-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/tykeal/ep_ldapauth.git"
   },
   "dependencies": {
     "async-stacktrace": "0.0.2",
-    "ldapjs": "0.7.1"
+    "ldapjs": "1.0.1"
   }
 }
