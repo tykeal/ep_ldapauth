@@ -1,3 +1,13 @@
+Changes from 0.2.0 to 0.3.0
+6a189e4 - Andrew Grimberg: Update declared dependencies and license declaration
+1312444 - Sergii Kipot: Skip admin binding if searchDN is not defined
+1cf0889 - Thomas Mueller: Add option tls_ca_file
+93dd8a5 - Thomas Mueller: Provide more descriptive error messages
+e582060 - schweima: Updating broken fix for #17 on modern socket.io
+d2837b4 - Yoann Gini: Update connection handling to be compatible with modern socket.io.
+978caed - Marek Šuppa: readme: Fixed small typo
+5d19fe0 - ArthurH: Update package.json
+
 Changes from 0.1.0 to 0.2.0
 - logger fix -- vileda
 - documentation updates and fixes
