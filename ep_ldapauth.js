@@ -102,7 +102,7 @@ exports.authorize = function(hook_name, context, cb) {
   if (typeof(context.req.session.user) !== 'undefined' &&
     typeof(context.req.session.user.username) !== 'undefined') {
     username = context.req.session.user.username;
-    if (typeof(context.req.session.user.userDN !== 'undefined')) {
+    if (typeof(context.req.session.user.userDN) !== 'undefined') {
       userDN = context.req.session.user.userDN;
     }
   } else {
