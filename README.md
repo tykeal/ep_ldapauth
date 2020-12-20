@@ -21,7 +21,8 @@ Add to settings.json:
             "groupAttributeIsDN": true,
             "searchScope": "sub",
             "groupSearch": "(&(cn=admin)(objectClass=groupOfNames))",
-            "anonymousReadonly": false
+            "anonymousReadonly": false,
+            "tls_ca_file": "yourcacert.crt"
         }
     },
 
