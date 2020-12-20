@@ -13,14 +13,12 @@ var authorManager = require('ep_etherpad-lite/node/db/AuthorManager');
 
 function ldapauthSetUsername(token, username) {
   console.debug('ep_ldapauth.ldapauthSetUsername: getting authorid for token %s', token);
-  authorManager.getAuthor4Token(token, function(err, author) {
-    if (ERR(err)) {
-      console.debug('ep_ldapauth.ldapauthSetUsername: could not get authorid for token %s', token);
-    } else {
-      console.debug('ep_ldapauth.ldapauthSetUsername: have authorid %s, setting username to "%s"', author, username);
-      authorManager.setAuthorName(author, username);
-    }
-  });
+  let author = authorManager.getAuthor4Token(token)
+  author.then(
+    function(author_id) {
+      console.debug('ep_ldapauth.ldapauthSetUsername: have authorid %s, setting username to "%s"', author_id, username);
+      authorManager.setAuthorName(author_id, username);
+    });
   return;
 }
 
