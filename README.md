@@ -26,7 +26,7 @@ Add to settings.json:
         }
     },
 
-Users who are in the matches group have *admin* access to
+Users who are in the matching group of "groupSearch" have *admin* access to
 etherpad-lite.
 
 ## Using with FreeIPA
