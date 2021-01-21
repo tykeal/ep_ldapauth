@@ -24,66 +24,72 @@ function ldapauthSetUsername(token, username) {
 
 exports.authenticate = function(hook_name, context, cb) {
   console.debug('ep_ldapauth.authenticate');
+  var userpass = false;
+  var password = false;
+  var express_sid = context.req.sessionID;
   // If auth headers are present use them to authenticate
   if (context.req.headers.authorization && context.req.headers.authorization.search('Basic ') === 0) {
     var userpass = new Buffer(context.req.headers.authorization.split(' ')[1], 'base64').toString().split(":");
-    var username = userpass.shift();
-    var password = userpass.join(':');
-    var express_sid = context.req.sessionID;
-    var myLdapAuthOpts = {
-      url: settings.users.ldapauth.url,
-      adminDn: settings.users.ldapauth.searchDN,
-      adminPassword: settings.users.ldapauth.searchPWD,
-      searchBase: settings.users.ldapauth.accountBase,
-      searchFilter: settings.users.ldapauth.accountPattern,
-      cache: true
-    };
+    username = userpass.shift();
+    password = userpass.join(':');
+  } else if (context.req.headers['x-remote-user']) {
+    console.debug('ep_ldapauth.authenticate: use X-Remote-User');
+    username = context.req.headers['x-remote-user'];
+  } else {
+    console.debug('ep_ldapauth.authenticate: failed authentication no auth headers');
+    return cb([false]);
+  }
 
-    if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
-      myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
-    }
+  var myLdapAuthOpts = {
+    url: settings.users.ldapauth.url,
+    adminDn: settings.users.ldapauth.searchDN,
+    adminPassword: settings.users.ldapauth.searchPWD,
+    searchBase: settings.users.ldapauth.accountBase,
+    searchFilter: settings.users.ldapauth.accountPattern,
+    cache: true
+  };
 
-    var authenticateLDAP = new MyLdapAuth(myLdapAuthOpts);
+  if (typeof(settings.users.ldapauth.tls_ca_file) !== 'undefined') {
+    myLdapAuthOpts.tls_ca = fs.readFileSync(settings.users.ldapauth.tls_ca_file);
+  }
 
-    // Attempt to authenticate the user
-    authenticateLDAP.authenticate(username, password, function(err, user) {
-      if (err) {
-        console.error('ep_ldapauth.authenticate: LDAP auth error: %s', err);
-        authenticateLDAP.close(function (err) {
-          if (err) {
-            console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
-          }
-        });
-        authenticateLDAP = null;
-        return cb([false]);
-      }
+  var authenticateLDAP = new MyLdapAuth(myLdapAuthOpts);
 
-      // User authenticated, save off some information needed for authorization
-      context.req.session.user = { username: username };
-      if ('displayNameAttribute' in settings.users.ldapauth && settings.users.ldapauth.displayNameAttribute in user) {
-        context.req.session.user['displayName']=user[settings.users.ldapauth.displayNameAttribute];
-      }
-      else if ('cn' in user) {
-        context.req.session.user['displayName']=user.cn;
-      }
-      if (settings.users.ldapauth.groupAttributeIsDN) {
-        context.req.session.user.userDN = user.dn;
-      }
-      settings.globalUserName = username;
-      console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
+  // Attempt to authenticate the user
+  authenticateLDAP.authenticate(username, password, function(err, user) {
+    if (err) {
+      console.error('ep_ldapauth.authenticate: LDAP auth error: %s', err);
       authenticateLDAP.close(function (err) {
         if (err) {
           console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
         }
       });
       authenticateLDAP = null;
-      console.debug('ep_ldapauth.authenticate: successful authentication');
-      return cb([true]);
+      return cb([false]);
+    }
+
+    // User authenticated, save off some information needed for authorization
+    context.req.session.user = { username: username };
+    if ('displayNameAttribute' in settings.users.ldapauth && settings.users.ldapauth.displayNameAttribute in user) {
+      context.req.session.user['displayName']=user[settings.users.ldapauth.displayNameAttribute];
+    }
+    else if ('cn' in user) {
+      context.req.session.user['displayName']=user.cn;
+    }
+    if (settings.users.ldapauth.groupAttributeIsDN) {
+      context.req.session.user.userDN = user.dn;
+    }
+    settings.globalUserName = username;
+    console.debug('ep_ldapauth.authenticate: deferring setting of username [%s] to CLIENT_READY for express_sid = %s', username, express_sid);
+    authenticateLDAP.close(function (err) {
+      if (err) {
+        console.error('ep_ldapauth.authenticate: LDAP close error: %s', err);
+      }
     });
-  } else {
-    console.debug('ep_ldapauth.authenticate: failed authentication no auth headers');
-    return cb([false]);
-  }
+    authenticateLDAP = null;
+    console.debug('ep_ldapauth.authenticate: successful authentication');
+    return cb([true]);
+  });
 };
 
 exports.authorize = function(hook_name, context, cb) {
@@ -113,6 +119,7 @@ exports.authorize = function(hook_name, context, cb) {
     return cb([true]);
   } else if (context.resource.match(/^\/admin/)) {
     console.debug('ep_ldapauth.authorize: attempting to authorize along administrative path %s', context.resource);
+
     var myLdapAuthOpts = {
       url: settings.users.ldapauth.url,
       adminDn: settings.users.ldapauth.searchDN,
