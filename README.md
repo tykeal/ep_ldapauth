@@ -26,7 +26,9 @@ Add to settings.json:
     },
 
 Users who are in the matches group have *admin* access to
-etherpad-lite.
+etherpad-lite. Note that once they gain access to an admin session once,
+they can use this session in the future to retain admin access even if
+they are removed from the admin group.
 
 ## Using with FreeIPA
 
