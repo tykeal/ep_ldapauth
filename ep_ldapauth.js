@@ -171,7 +171,7 @@ exports.authorize = function(hook_name, context, cb) {
     });
   } else {
     console.debug('ep_ldapauth.authorize: passing authorize along for path %s', context.resource);
-    return cb([false]);
+    return cb([true]);
   }
 };
 
